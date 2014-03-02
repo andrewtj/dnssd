@@ -88,6 +88,33 @@ static int32_t dnssdResolve(
 	return DNSServiceResolve(sdRef, flags, ifIndex, name, regtype, domain, callback, context);
 }
 
+extern void queryCallbackWrapper(
+    void                  *sdRef,
+    uint32_t              flags,
+    uint32_t              ifIndex,
+    int32_t               errorCode,
+    void                  *fullname,
+    uint16_t              rrtype,
+    uint16_t              rrclass,
+    uint16_t              rdlen,
+    void                  *rdata,
+    uint32_t              ttl,
+    void                  *context
+    );
+
+static int32_t dnssdQuery(
+    void                  *sdRef,
+    DNSServiceFlags       flags,
+    uint32_t              ifIndex,
+    const char            *name,
+    uint16_t              rrtype,
+    uint16_t              rrclass,
+    void                  *context
+    ) {
+    DNSServiceQueryRecordReply callback = (DNSServiceQueryRecordReply) queryCallbackWrapper;
+    return DNSServiceQueryRecord(sdRef, flags, ifIndex, name, rrtype, rrclass, callback, context);
+}
+
 static uint16_t dnssdNtohs(uint16_t n) {
 	return ntohs(n);
 }
@@ -178,6 +205,22 @@ func registerStart(ref *uintptr, flags, ifIndex uint32, name, typ, domain, host 
 //export registerCallbackWrapper
 func registerCallbackWrapper(sdRef unsafe.Pointer, flags uint32, err int32, name, regtype, domain, ctx unsafe.Pointer) {
 	dnssdRegisterCallback(sdRef, flags, err, name, regtype, domain, ctx)
+}
+
+func queryStart(ref *uintptr, flags, ifIndex uint32, name string, rrtype, rrclass uint16, ctx unsafe.Pointer) error {
+	cref := unsafe.Pointer(ref)
+	cflags := C.DNSServiceFlags(flags)
+	cifIndex := C.uint32_t(ifIndex)
+	cname := C.CString(name)
+	defer C.free(unsafe.Pointer(cname))
+	crrtype, crrclass := C.uint16_t(rrtype), C.uint16_t(rrclass)
+	e := C.dnssdQuery(cref, cflags, cifIndex, cname, crrtype, crrclass, ctx)
+	return getError(int32(e))
+}
+
+//export queryCallbackWrapper
+func queryCallbackWrapper(sdRef unsafe.Pointer, flags, ifIndex uint32, err int32, f unsafe.Pointer, rrtype, rrclass, rdlen uint16, rdata unsafe.Pointer, ttl uint32, ctx unsafe.Pointer) {
+	dnssdQueryCallback(sdRef, flags, ifIndex, err, f, rrtype, rrclass, rdlen, rdata, ttl, ctx)
 }
 
 func refSockFd(ref *uintptr) int {

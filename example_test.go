@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/andrewtj/dnssd"
+	"github.com/miekg/dns"
 )
 
 func ExampleRegisterCallbackFunc(op *dnssd.RegisterOp, err error, add bool, name, serviceType, domain string) {
@@ -109,5 +110,62 @@ func ExampleResolveOp() {
 		return
 	}
 	// later...
+	op.Stop()
+}
+
+func ExampleQueryCallbackFunc(op *dnssd.QueryOp, err error, add bool, interfaceIndex int, fullname string, rrtype, rrclass uint16, rdata []byte, ttl uint32) {
+	if err != nil {
+		// op is now inactive
+		log.Printf("Query operation failed: %s", err)
+		return
+	}
+	change := "removed"
+	if add {
+		change = "added"
+	}
+	log.Printf("Query operation %s %s/%d/%d/%v (TTL: %d) on interface %d", change, fullname, rrtype, rrclass, rdata, ttl, interfaceIndex)
+}
+
+func ExampleQueryCallbackFunc_unpackRR(op *dnssd.QueryOp, err error, add bool, interfaceIndex int, fullname string, rrtype, rrclass uint16, rdata []byte, ttl uint32) {
+	// Demonstrates constructing a resource record and unpacking it using
+	// Miek Gieben's dns package (https://github.com/miekg/dns/).
+
+	if err != nil {
+		// op is now inactive
+		log.Printf("Query operation failed: %s", err)
+		return
+	}
+
+	buf := make([]byte, len(fullname)+1+2+2+4+2+len(rdata))
+	off, err := dns.PackDomainName(fullname, buf, 0, nil, false)
+	if err != nil {
+		log.Fatalf("Error packing domain: %s", err)
+	}
+	buf = buf[:off]
+	buf = append(buf, byte(rrtype>>8), byte(rrtype))
+	buf = append(buf, byte(rrclass>>8), byte(rrclass))
+	buf = append(buf, byte(ttl>>24), byte(ttl>>16), byte(ttl>>8), byte(ttl))
+	buf = append(buf, byte(len(rdata)>>8), byte(len(rdata)))
+	buf = append(buf, rdata...)
+	rr, off, err := dns.UnpackRR(buf, 0)
+	if err != nil {
+		log.Fatalf("Error unpacking rr: %s", err)
+	}
+
+	change := "removed"
+	if add {
+		change = "added"
+	}
+
+	log.Printf("Query operation on interface %d %s:\n%s", interfaceIndex, change, rr.String())
+}
+
+func ExampleQueryOp() {
+	op := dnssd.NewQueryOp(0, "golang.org.", 1, 1, ExampleQueryCallbackFunc)
+	if err := op.Start(); err != nil {
+		log.Printf("Failed to start query operation: %s", err)
+		return
+	}
+	// later
 	op.Stop()
 }

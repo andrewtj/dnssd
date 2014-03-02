@@ -114,7 +114,7 @@ func resolveStart(ref *uintptr, flags, ifIndex uint32, name, typ, domain string,
 	return getError(int32(r))
 }
 
-func dnssdResolveCallbackWrapper(sdRef unsafe.Pointer, flags, interfaceIndex uint32, err int32, fullname, hosttarget unsafe.Pointer, port uint16, txtLen uint32 /* the docs lie! */, txtRecord, ctx unsafe.Pointer) int32 {
+func dnssdResolveCallbackWrapper(sdRef unsafe.Pointer, flags, interfaceIndex uint32, err int32, fullname, hosttarget unsafe.Pointer, port uint16, txtLen uint32 /* docs say uint16 but it seems to be a uint32 */, txtRecord, ctx unsafe.Pointer) int32 {
 	dnssdResolveCallback(sdRef, flags, interfaceIndex, err, fullname, hosttarget, port, uint16(txtLen), txtRecord, ctx)
 	return 0
 }
@@ -167,6 +167,33 @@ func registerStart(ref *uintptr, flags, ifIndex uint32, name, typ, domain, host 
 
 func registerCallbackWrapper(sdRef unsafe.Pointer, flags uint32, err int32, name, regtype, domain, ctx unsafe.Pointer) int32 {
 	dnssdRegisterCallback(sdRef, flags, err, name, regtype, domain, ctx)
+	return 0
+}
+
+func queryStart(ref *uintptr, flags, ifIndex uint32, name string, rrtype, rrclass uint16, ctx unsafe.Pointer) error {
+	proc, err := getProc("dnssd.dll", "DNSServiceQueryRecord")
+	if err != nil {
+		return err
+	}
+	bname, err := syscall.BytePtrFromString(name)
+	if err != nil {
+		return err
+	}
+	r, _, _ := proc.Call(
+		(uintptr)(unsafe.Pointer(ref)),
+		uintptr(flags),
+		uintptr(ifIndex),
+		(uintptr)(unsafe.Pointer(bname)),
+		uintptr(rrtype),
+		uintptr(rrclass),
+		syscall.NewCallback(queryCallbackWrapper),
+		(uintptr)(ctx),
+	)
+	return getError(int32(r))
+}
+
+func queryCallbackWrapper(sdRef unsafe.Pointer, flags, ifIndex uint32, err int32, fullname unsafe.Pointer, rrtype, rrclass, rdlen uint32 /* docs say uint16 but seems to be a uint32 !*/, rdataptr unsafe.Pointer, ttl uint32, ctx unsafe.Pointer) int32 {
+	dnssdQueryCallback(sdRef, flags, ifIndex, err, fullname, uint16(rrtype), uint16(rrclass), uint16(rdlen), rdataptr, ttl, ctx)
 	return 0
 }
 

@@ -12,6 +12,8 @@ type ResolveCallbackFunc func(op *ResolveOp, err error, host string, port int, t
 type ResolveOp struct {
 	baseOp
 	name     string
+	stype          string
+	domain         string
 	callback ResolveCallbackFunc
 }
 
@@ -48,6 +50,42 @@ func (o *ResolveOp) SetName(n string) error {
 		return ErrStarted
 	}
 	o.name = n
+	return nil
+}
+
+// Type returns the service type associated with the op.
+func (o *ResolveOp) Type() string {
+	o.m.Lock()
+	defer o.m.Unlock()
+	return o.stype
+}
+
+// SetType sets the service type associated with the op.
+func (o *ResolveOp) SetType(s string) error {
+	o.m.Lock()
+	defer o.m.Unlock()
+	if o.started {
+		return ErrStarted
+	}
+	o.stype = s
+	return nil
+}
+
+// Domain returns the domain associated with the op.
+func (o *ResolveOp) Domain() string {
+	o.m.Lock()
+	defer o.m.Unlock()
+	return o.domain
+}
+
+// SetDomain sets the domain associated with the op.
+func (o *ResolveOp) SetDomain(s string) error {
+	o.m.Lock()
+	defer o.m.Unlock()
+	if o.started {
+		return ErrStarted
+	}
+	o.domain = s
 	return nil
 }
 

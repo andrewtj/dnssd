@@ -8,6 +8,8 @@ type BrowseCallbackFunc func(op *BrowseOp, err error, add bool, interfaceIndex i
 // BrowseOp represents a query for services of a particular type.
 type BrowseOp struct {
 	baseOp
+	stype          string
+	domain         string
 	callback BrowseCallbackFunc
 }
 
@@ -23,6 +25,42 @@ func NewBrowseOp(serviceType string, f BrowseCallbackFunc) *BrowseOp {
 func StartBrowseOp(serviceType string, f BrowseCallbackFunc) (*BrowseOp, error) {
 	op := NewBrowseOp(serviceType, f)
 	return op, op.Start()
+}
+
+// Type returns the service type associated with the op.
+func (o *BrowseOp) Type() string {
+	o.m.Lock()
+	defer o.m.Unlock()
+	return o.stype
+}
+
+// SetType sets the service type associated with the op.
+func (o *BrowseOp) SetType(s string) error {
+	o.m.Lock()
+	defer o.m.Unlock()
+	if o.started {
+		return ErrStarted
+	}
+	o.stype = s
+	return nil
+}
+
+// Domain returns the domain associated with the op.
+func (o *BrowseOp) Domain() string {
+	o.m.Lock()
+	defer o.m.Unlock()
+	return o.domain
+}
+
+// SetDomain sets the domain associated with the op.
+func (o *BrowseOp) SetDomain(s string) error {
+	o.m.Lock()
+	defer o.m.Unlock()
+	if o.started {
+		return ErrStarted
+	}
+	o.domain = s
+	return nil
 }
 
 // SetCallback sets the function to call when an error occurs or a service is lost or found.

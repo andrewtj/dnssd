@@ -12,6 +12,8 @@ type RegisterCallbackFunc func(op *RegisterOp, err error, add bool, name, servic
 type RegisterOp struct {
 	baseOp
 	name string
+	stype          string
+	domain         string
 	host string
 	port int
 	txt  struct {
@@ -66,6 +68,42 @@ func (o *RegisterOp) SetName(n string) error {
 		return ErrStarted
 	}
 	o.name = n
+	return nil
+}
+
+// Type returns the service type associated with the op.
+func (o *RegisterOp) Type() string {
+	o.m.Lock()
+	defer o.m.Unlock()
+	return o.stype
+}
+
+// SetType sets the service type associated with the op.
+func (o *RegisterOp) SetType(s string) error {
+	o.m.Lock()
+	defer o.m.Unlock()
+	if o.started {
+		return ErrStarted
+	}
+	o.stype = s
+	return nil
+}
+
+// Domain returns the domain associated with the op.
+func (o *RegisterOp) Domain() string {
+	o.m.Lock()
+	defer o.m.Unlock()
+	return o.domain
+}
+
+// SetDomain sets the domain associated with the op.
+func (o *RegisterOp) SetDomain(s string) error {
+	o.m.Lock()
+	defer o.m.Unlock()
+	if o.started {
+		return ErrStarted
+	}
+	o.domain = s
 	return nil
 }
 

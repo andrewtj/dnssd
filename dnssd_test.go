@@ -114,3 +114,9 @@ func TestDecodeTxtKeyValue(t *testing.T) {
 		}
 	}
 }
+
+func TestQueryStartStop(t *testing.T) {
+	f := func(op *QueryOp, err error, add bool, interfaceIndex int, fullname string, rrtype, rrclass uint16, rdata []byte, ttl uint32) {
+	}
+	StartStopHelper(t, NewQueryOp(0, "golang.org.", 1, 1, f))
+}

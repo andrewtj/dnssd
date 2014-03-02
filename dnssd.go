@@ -22,15 +22,17 @@
 //
 // The DNS Service Discovery API is wrapped as follows:
 //
-//  DNSServiceRegister() -> RegisterOp
-//  DNSServiceBrowse()   -> BrowseOp
-//  DNSServiceResolve()  -> ResolveOp
+//  DNSServiceRegister()    -> RegisterOp
+//  DNSServiceBrowse()      -> BrowseOp
+//  DNSServiceResolve()     -> ResolveOp
+//  DNSServiceQueryRecord() -> QueryOp
 //
-// All operations require a callback and service type be set. If an
-// InterfaceIndex is not set the default value of InterfaceIndexAny is used
-// which applies the operation to all network interfaces. If no domain is set or
-// the domain is set to an empty-string the operation applies to all applicable
-// DNS-SD domains.
+// All operations require a callback be set. RegisterOp, BrowseOp and ResolveOp
+// require a service type be set. QueryOp requires name, class and type be set.
+// If an InterfaceIndex is not set the default value of InterfaceIndexAny is
+// used which applies the operation to all network interfaces. For operations
+// that take a domain, if no domain is set or the domain is set to an empty
+// string the operation applies to all applicable DNS-SD domains.
 //
 // If a service is registered with an empty string as it's name, the local
 // computer name (or hostname) will be substitued. If no host is specified a
@@ -63,8 +65,6 @@ type baseOp struct {
 	m              sync.Mutex
 	shared         bool
 	started        bool
-	stype          string
-	domain         string
 	interfaceIndex int
 	flags          uint32
 }
@@ -114,42 +114,6 @@ func (o *baseOp) Active() bool {
 	o.m.Lock()
 	defer o.m.Unlock()
 	return o.started
-}
-
-// Type returns the service type associated with the op.
-func (o *baseOp) Type() string {
-	o.m.Lock()
-	defer o.m.Unlock()
-	return o.stype
-}
-
-// SetType sets the service type associated with the op.
-func (o *baseOp) SetType(s string) error {
-	o.m.Lock()
-	defer o.m.Unlock()
-	if o.started {
-		return ErrStarted
-	}
-	o.stype = s
-	return nil
-}
-
-// Domain returns the domain associated with the op.
-func (o *baseOp) Domain() string {
-	o.m.Lock()
-	defer o.m.Unlock()
-	return o.domain
-}
-
-// SetDomain sets the domain associated with the op.
-func (o *baseOp) SetDomain(s string) error {
-	o.m.Lock()
-	defer o.m.Unlock()
-	if o.started {
-		return ErrStarted
-	}
-	o.domain = s
-	return nil
 }
 
 // InterfaceIndex returns the interface index the op is tied to.
