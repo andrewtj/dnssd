@@ -38,7 +38,7 @@ func TestRegTxt(t *testing.T) {
 		t.Fatalf(`Unexpected error setting key "%s", value "%s": %v`, key, value, err)
 	}
 	if l := 2 + len(key) + len(value); op.txt.l != l {
-		t.Fatalf(`Expected length %s after setting key "%s", value "%s", got: %v`, l, key, value, op.txt.l)
+		t.Fatalf(`Expected length %d after setting key "%s", value "%s", got: %d`, l, key, value, op.txt.l)
 	}
 	if err := op.DeleteTXTPair(key); err != nil {
 		t.Fatalf(`Unexpected error deleting key "%s": %v`, key, err)
