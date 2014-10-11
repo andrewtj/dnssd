@@ -11,12 +11,12 @@ type RegisterCallbackFunc func(op *RegisterOp, err error, add bool, name, servic
 // RegisterOp represents a service registration operation.
 type RegisterOp struct {
 	baseOp
-	name string
-	stype          string
-	domain         string
-	host string
-	port int
-	txt  struct {
+	name   string
+	stype  string
+	domain string
+	host   string
+	port   int
+	txt    struct {
 		l int
 		m map[string]string
 	}

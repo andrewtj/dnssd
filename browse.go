@@ -8,8 +8,8 @@ type BrowseCallbackFunc func(op *BrowseOp, err error, add bool, interfaceIndex i
 // BrowseOp represents a query for services of a particular type.
 type BrowseOp struct {
 	baseOp
-	stype          string
-	domain         string
+	stype    string
+	domain   string
 	callback BrowseCallbackFunc
 }
 

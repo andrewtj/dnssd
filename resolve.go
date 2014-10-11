@@ -12,8 +12,8 @@ type ResolveCallbackFunc func(op *ResolveOp, err error, host string, port int, t
 type ResolveOp struct {
 	baseOp
 	name     string
-	stype          string
-	domain         string
+	stype    string
+	domain   string
 	callback ResolveCallbackFunc
 }
 
