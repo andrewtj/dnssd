@@ -234,7 +234,7 @@ func (o *RegisterOp) Start() error {
 func (o *RegisterOp) init(sharedref uintptr) (ref uintptr, err error) {
 	ref = sharedref
 	o.setFlag(_FlagsShareConnection, ref != 0)
-	txt := make([]byte, o.txt.l)
+	txt := make([]byte, 0, o.txt.l)
 	for k, v := range o.txt.m {
 		s := k + "=" + v
 		txt = append(txt, byte(len(s)))
