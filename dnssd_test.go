@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 )
 
 type genericop interface {
@@ -119,4 +120,71 @@ func TestQueryStartStop(t *testing.T) {
 	f := func(op *QueryOp, err error, add bool, interfaceIndex int, fullname string, rrtype, rrclass uint16, rdata []byte, ttl uint32) {
 	}
 	StartStopHelper(t, NewQueryOp(0, "golang.org.", 1, 1, f))
+}
+
+func TestRegisterPort(t *testing.T) {
+	sport := 0xCAFE
+	sname := "go-dnssd-test"
+	stype := "_" + sname + "._udp"
+	sdom := "local"
+	errch := make(chan string)
+	senderr := func(f string, a ...interface{}) {
+		select {
+		case errch <- fmt.Sprintf(f, a...):
+		default:
+		}
+	}
+	resop := NewResolveOp(InterfaceIndexLocalOnly, sname, stype, sdom, func(op *ResolveOp, err error, host string, port int, txt map[string]string) {
+		switch {
+		case err != nil:
+			senderr("resolve callback - error: %s", err)
+		case port != sport:
+			senderr("resolve callback - bad port. expected: %d got: %d", sport, port)
+		default:
+			t.Logf("resolve callback - called with correct port")
+			close(errch)
+		}
+	})
+	regop := NewRegisterOp(sname, stype, sport, func(op *RegisterOp, err error, add bool, name, serviceType, domain string) {
+		action := "rmv"
+		switch {
+		case err != nil:
+			senderr("register callback - error: %s", err)
+		case add:
+			action = "add"
+			fallthrough
+		default:
+			t.Logf("register callback - %s", action)
+			switch err := resop.Start(); err {
+			case nil:
+				t.Logf("register callback - resolve op started")
+			case ErrStarted:
+			default:
+				senderr("register callback - resolve op start failed: %s", err)
+			}
+		}
+	})
+	if err := regop.SetNoAutoRename(true); err != nil {
+		panic(err)
+	}
+	if err := regop.SetInterfaceIndex(InterfaceIndexLocalOnly); err != nil {
+		panic(err)
+	}
+	if err := regop.SetDomain("local"); err != nil {
+		panic(err)
+	}
+	if err := regop.Start(); err != nil {
+		t.Fatalf("register op start failed: %s", err)
+	} else {
+		t.Logf("register op started")
+	}
+	defer regop.Stop()
+	defer resop.Stop()
+	go func() {
+		time.Sleep(time.Second)
+		senderr("test took longer than a second")
+	}()
+	if errmsg, ok := <-errch; ok {
+		t.Fatal(errmsg)
+	}
 }
