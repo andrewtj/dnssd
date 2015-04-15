@@ -147,6 +147,7 @@ func registerStart(ref *uintptr, flags, ifIndex uint32, name, typ, domain, host 
 		txtPtr = unsafe.Pointer(&txt[0])
 	}
 
+	port16 := uint16(port)
 	r, _, _ := proc.Call(
 		(uintptr)(unsafe.Pointer(ref)),
 		uintptr(flags),
@@ -155,7 +156,7 @@ func registerStart(ref *uintptr, flags, ifIndex uint32, name, typ, domain, host 
 		(uintptr)(unsafe.Pointer(btyp)),
 		(uintptr)(unsafe.Pointer(bdomain)),
 		(uintptr)(unsafe.Pointer(bhost)),
-		uintptr(port),
+		uintptr(port16<<8|port16>>8),
 		txtLen,
 		(uintptr)(txtPtr),
 		syscall.NewCallback(registerCallbackWrapper),
