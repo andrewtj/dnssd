@@ -79,8 +79,8 @@ func browseStart(ref *uintptr, flags, ifIndex uint32, typ, domain string, ctx un
 	return getError(int32(r))
 }
 
-func browseCallbackWrapper(sdRef unsafe.Pointer, flags, interfaceIndex uint32, err int32, name, stype, domain unsafe.Pointer, ctx unsafe.Pointer) int32 {
-	dnssdBrowseCallback(sdRef, flags, interfaceIndex, err, name, stype, domain, ctx)
+func browseCallbackWrapper(sdRef unsafe.Pointer, flags, interfaceIndex uint, err int, name, stype, domain unsafe.Pointer, ctx unsafe.Pointer) uintptr {
+	dnssdBrowseCallback(sdRef, uint32(flags), uint32(interfaceIndex), int32(err), name, stype, domain, ctx)
 	return 0
 }
 
@@ -114,8 +114,8 @@ func resolveStart(ref *uintptr, flags, ifIndex uint32, name, typ, domain string,
 	return getError(int32(r))
 }
 
-func dnssdResolveCallbackWrapper(sdRef unsafe.Pointer, flags, interfaceIndex uint32, err int32, fullname, hosttarget unsafe.Pointer, port uint16, txtLen uint32 /* docs say uint16 but it seems to be a uint32 */, txtRecord, ctx unsafe.Pointer) int32 {
-	dnssdResolveCallback(sdRef, flags, interfaceIndex, err, fullname, hosttarget, port, uint16(txtLen), txtRecord, ctx)
+func dnssdResolveCallbackWrapper(sdRef unsafe.Pointer, flags, interfaceIndex uint, err int, fullname, hosttarget unsafe.Pointer, port uint, txtLen uint, txtRecord, ctx unsafe.Pointer) uintptr {
+	dnssdResolveCallback(sdRef, uint32(flags), uint32(interfaceIndex), int32(err), fullname, hosttarget, syscall.Ntohs(uint16(port)), uint16(txtLen), txtRecord, ctx)
 	return 0
 }
 
@@ -166,8 +166,8 @@ func registerStart(ref *uintptr, flags, ifIndex uint32, name, typ, domain, host 
 
 }
 
-func registerCallbackWrapper(sdRef unsafe.Pointer, flags uint32, err int32, name, regtype, domain, ctx unsafe.Pointer) int32 {
-	dnssdRegisterCallback(sdRef, flags, err, name, regtype, domain, ctx)
+func registerCallbackWrapper(sdRef unsafe.Pointer, flags uint, err int, name, regtype, domain, ctx unsafe.Pointer) uintptr {
+	dnssdRegisterCallback(sdRef, uint32(flags), int32(err), name, regtype, domain, ctx)
 	return 0
 }
 
@@ -193,8 +193,8 @@ func queryStart(ref *uintptr, flags, ifIndex uint32, name string, rrtype, rrclas
 	return getError(int32(r))
 }
 
-func queryCallbackWrapper(sdRef unsafe.Pointer, flags, ifIndex uint32, err int32, fullname unsafe.Pointer, rrtype, rrclass, rdlen uint32 /* docs say uint16 but seems to be a uint32 !*/, rdataptr unsafe.Pointer, ttl uint32, ctx unsafe.Pointer) int32 {
-	dnssdQueryCallback(sdRef, flags, ifIndex, err, fullname, uint16(rrtype), uint16(rrclass), uint16(rdlen), rdataptr, ttl, ctx)
+func queryCallbackWrapper(sdRef unsafe.Pointer, flags, ifIndex uint, err int, fullname unsafe.Pointer, rrtype, rrclass, rdlen uint, rdataptr unsafe.Pointer, ttl uint, ctx unsafe.Pointer) uintptr {
+	dnssdQueryCallback(sdRef, uint32(flags), uint32(ifIndex), int32(err), fullname, uint16(rrtype), uint16(rrclass), uint16(rdlen), rdataptr, uint32(ttl), ctx)
 	return 0
 }
 
