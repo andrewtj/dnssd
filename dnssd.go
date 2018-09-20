@@ -1,7 +1,5 @@
 // Package dnssd implements a wrapper for Apple's C DNS Service Discovery API.
 //
-//   This package broke with Go 1.6: https://github.com/andrewtj/dnssd/issues/5
-//
 // The DNS Service Discovery API is part of the Apple Bonjour zero
 // configuration networking stack. The API allows for network services to be
 // registered, browsed and resolved without configuration via multicast DNS
