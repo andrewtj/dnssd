@@ -54,7 +54,7 @@ func mustGetProc(dllName, procName string) *syscall.Proc {
 	return proc
 }
 
-func browseStart(ref *uintptr, flags, ifIndex uint32, typ, domain string, ctx unsafe.Pointer) error {
+func browseStart(ref *uintptr, flags, ifIndex uint32, typ, domain string, ctx uintptr) error {
 	proc, err := getProc("dnssd.dll", "DNSServiceBrowse")
 	if err != nil {
 		return err
@@ -74,17 +74,17 @@ func browseStart(ref *uintptr, flags, ifIndex uint32, typ, domain string, ctx un
 		(uintptr)(unsafe.Pointer(btyp)),
 		(uintptr)(unsafe.Pointer(bdomain)),
 		syscall.NewCallback(browseCallbackWrapper),
-		(uintptr)(ctx),
+		ctx,
 	)
 	return getError(int32(r))
 }
 
-func browseCallbackWrapper(sdRef unsafe.Pointer, flags, interfaceIndex uint, err int, name, stype, domain unsafe.Pointer, ctx unsafe.Pointer) uintptr {
-	dnssdBrowseCallback(sdRef, uint32(flags), uint32(interfaceIndex), int32(err), name, stype, domain, ctx)
+func browseCallbackWrapper(sdRef unsafe.Pointer, flags, interfaceIndex uint, err int, name, stype, domain, ctx unsafe.Pointer) uintptr {
+	dnssdBrowseCallback(sdRef, uint32(flags), uint32(interfaceIndex), int32(err), name, stype, domain, uintptr(ctx))
 	return 0
 }
 
-func resolveStart(ref *uintptr, flags, ifIndex uint32, name, typ, domain string, ctx unsafe.Pointer) error {
+func resolveStart(ref *uintptr, flags, ifIndex uint32, name, typ, domain string, ctx uintptr) error {
 	proc, err := getProc("dnssd.dll", "DNSServiceResolve")
 	if err != nil {
 		return err
@@ -109,17 +109,17 @@ func resolveStart(ref *uintptr, flags, ifIndex uint32, name, typ, domain string,
 		uintptr(unsafe.Pointer(btyp)),
 		uintptr(unsafe.Pointer(bdomain)),
 		syscall.NewCallback(dnssdResolveCallbackWrapper),
-		uintptr(ctx),
+		ctx,
 	)
 	return getError(int32(r))
 }
 
 func dnssdResolveCallbackWrapper(sdRef unsafe.Pointer, flags, interfaceIndex uint, err int, fullname, hosttarget unsafe.Pointer, port uint, txtLen uint, txtRecord, ctx unsafe.Pointer) uintptr {
-	dnssdResolveCallback(sdRef, uint32(flags), uint32(interfaceIndex), int32(err), fullname, hosttarget, syscall.Ntohs(uint16(port)), uint16(txtLen), txtRecord, ctx)
+	dnssdResolveCallback(sdRef, uint32(flags), uint32(interfaceIndex), int32(err), fullname, hosttarget, syscall.Ntohs(uint16(port)), uint16(txtLen), txtRecord, uintptr(ctx))
 	return 0
 }
 
-func registerStart(ref *uintptr, flags, ifIndex uint32, name, typ, domain, host string, port int, txt []byte, ctx unsafe.Pointer) error {
+func registerStart(ref *uintptr, flags, ifIndex uint32, name, typ, domain, host string, port int, txt []byte, ctx uintptr) error {
 	proc, err := getProc("dnssd.dll", "DNSServiceRegister")
 	if err != nil {
 		return err
@@ -160,18 +160,18 @@ func registerStart(ref *uintptr, flags, ifIndex uint32, name, typ, domain, host 
 		txtLen,
 		(uintptr)(txtPtr),
 		syscall.NewCallback(registerCallbackWrapper),
-		uintptr(ctx),
+		ctx,
 	)
 	return getError(int32(r))
 
 }
 
 func registerCallbackWrapper(sdRef unsafe.Pointer, flags uint, err int, name, regtype, domain, ctx unsafe.Pointer) uintptr {
-	dnssdRegisterCallback(sdRef, uint32(flags), int32(err), name, regtype, domain, ctx)
+	dnssdRegisterCallback(sdRef, uint32(flags), int32(err), name, regtype, domain, uintptr(ctx))
 	return 0
 }
 
-func queryStart(ref *uintptr, flags, ifIndex uint32, name string, rrtype, rrclass uint16, ctx unsafe.Pointer) error {
+func queryStart(ref *uintptr, flags, ifIndex uint32, name string, rrtype, rrclass uint16, ctx uintptr) error {
 	proc, err := getProc("dnssd.dll", "DNSServiceQueryRecord")
 	if err != nil {
 		return err
@@ -188,13 +188,13 @@ func queryStart(ref *uintptr, flags, ifIndex uint32, name string, rrtype, rrclas
 		uintptr(rrtype),
 		uintptr(rrclass),
 		syscall.NewCallback(queryCallbackWrapper),
-		(uintptr)(ctx),
+		ctx,
 	)
 	return getError(int32(r))
 }
 
 func queryCallbackWrapper(sdRef unsafe.Pointer, flags, ifIndex uint, err int, fullname unsafe.Pointer, rrtype, rrclass, rdlen uint, rdataptr unsafe.Pointer, ttl uint, ctx unsafe.Pointer) uintptr {
-	dnssdQueryCallback(sdRef, uint32(flags), uint32(ifIndex), int32(err), fullname, uint16(rrtype), uint16(rrclass), uint16(rdlen), rdataptr, uint32(ttl), ctx)
+	dnssdQueryCallback(sdRef, uint32(flags), uint32(ifIndex), int32(err), fullname, uint16(rrtype), uint16(rrclass), uint16(rdlen), rdataptr, uint32(ttl), uintptr(ctx))
 	return 0
 }
 

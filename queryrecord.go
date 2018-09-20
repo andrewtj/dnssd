@@ -1,6 +1,9 @@
 package dnssd
 
-import "unsafe"
+import (
+	"log"
+	"unsafe"
+)
 
 // QueryCallbackFunc is called when an error occurs or a record is added or removed.
 // Results may be cached for ttl seconds. After ttl seconds the result should be discarded.
@@ -116,7 +119,7 @@ func (o *QueryOp) Start() error {
 func (o *QueryOp) init(sharedref uintptr) (ref uintptr, err error) {
 	ref = sharedref
 	o.setFlag(_FlagsShareConnection, ref != 0)
-	if err = queryStart(&ref, o.flags, o.interfaceIndexC(), o.name, o.rrtype, o.rrclass, unsafe.Pointer(o)); err != nil {
+	if err = queryStart(&ref, o.flags, o.interfaceIndexC(), o.name, o.rrtype, o.rrclass, o.id); err != nil {
 		ref = 0
 	}
 	return
@@ -141,8 +144,12 @@ func (o *QueryOp) handleError(e error) {
 	queueCallback(func() { o.callback(o, e, false, 0, "", 0, 0, nil, 0) })
 }
 
-func dnssdQueryCallback(sdRef unsafe.Pointer, flags, interfaceIndex uint32, err int32, fullname unsafe.Pointer, rrtype, rrclass, rdlen uint16, rdataptr unsafe.Pointer, ttl uint32, ctx unsafe.Pointer) {
-	o := (*QueryOp)(ctx)
+func dnssdQueryCallback(sdRef unsafe.Pointer, flags, interfaceIndex uint32, err int32, fullname unsafe.Pointer, rrtype, rrclass, rdlen uint16, rdataptr unsafe.Pointer, ttl uint32, ctx uintptr) {
+	o, _ := getOpByID(ctx).(*QueryOp)
+	if o == nil {
+		log.Printf("[ERR] missing *QueryOp for %v", ctx)
+		return
+	}
 	if e := getError(err); e != nil {
 		o.handleError(e)
 	} else {

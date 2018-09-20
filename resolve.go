@@ -2,6 +2,7 @@ package dnssd
 
 import (
 	"bytes"
+	"log"
 	"unsafe"
 )
 
@@ -118,7 +119,7 @@ func (o *ResolveOp) Start() error {
 func (o *ResolveOp) init(sharedref uintptr) (ref uintptr, err error) {
 	ref = sharedref
 	o.setFlag(_FlagsShareConnection, ref != 0)
-	if err = resolveStart(&ref, o.flags, o.interfaceIndexC(), o.name, o.stype, o.domain, unsafe.Pointer(o)); err != nil {
+	if err = resolveStart(&ref, o.flags, o.interfaceIndexC(), o.name, o.stype, o.domain, o.id); err != nil {
 		ref = 0
 	}
 	return
@@ -144,8 +145,12 @@ func (o *ResolveOp) handleError(e error) {
 	queueCallback(func() { o.callback(o, e, "", 0, nil) })
 }
 
-func dnssdResolveCallback(sdRef unsafe.Pointer, flags, interfaceIndex uint32, err int32, fullname, hosttarget unsafe.Pointer, port uint16, txtLen uint16, txtRecord, ctx unsafe.Pointer) {
-	o := (*ResolveOp)(ctx)
+func dnssdResolveCallback(sdRef unsafe.Pointer, flags, interfaceIndex uint32, err int32, fullname, hosttarget unsafe.Pointer, port uint16, txtLen uint16, txtRecord unsafe.Pointer, ctx uintptr) {
+	o, _ := getOpByID(ctx).(*ResolveOp)
+	if o == nil {
+		log.Printf("[ERR] missing *ResolveOp for %v", ctx)
+		return
+	}
 	if e := getError(err); e != nil {
 		o.handleError(e)
 	} else {

@@ -5,6 +5,8 @@ import "sync"
 type pollable interface {
 	init(uintptr) (uintptr, error)
 	handleError(error)
+	create(interface{})
+	destroy()
 }
 
 type pollServerOp struct {
@@ -46,6 +48,7 @@ func (s *pollServerState) startOp(p pollable) error {
 		return ErrStarted
 	}
 	s.establishSharedConnection()
+	p.create(p)
 	ref, err := p.init(s.shared.ref)
 	if err != nil {
 		return err
@@ -66,6 +69,7 @@ func (s *pollServerState) stopOp(p pollable) error {
 	s.removePollOp(p)
 	s.m.internal.Unlock()
 	s.startPoll()
+	p.destroy()
 	return nil
 }
 

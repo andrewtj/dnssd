@@ -1,6 +1,7 @@
 package dnssd
 
 import (
+	"log"
 	"os"
 	"unsafe"
 )
@@ -240,13 +241,13 @@ func (o *RegisterOp) init(sharedref uintptr) (ref uintptr, err error) {
 		txt = append(txt, byte(len(s)))
 		txt = append(txt, s...)
 	}
-	err = registerStart(&ref, o.flags, o.interfaceIndexC(), o.name, o.stype, o.domain, o.host, o.port, txt, unsafe.Pointer(o))
+	err = registerStart(&ref, o.flags, o.interfaceIndexC(), o.name, o.stype, o.domain, o.host, o.port, txt, o.id)
 	// Avahi's Bonjour compatibility layer doesn't substitute the system's
 	// name in place of an empty service name string.
 	if err == ErrBadParam && o.name == "" {
 		ref = sharedref
 		hostname, _ := os.Hostname()
-		err = registerStart(&ref, o.flags, o.interfaceIndexC(), hostname, o.stype, o.domain, o.host, o.port, txt, unsafe.Pointer(o))
+		err = registerStart(&ref, o.flags, o.interfaceIndexC(), hostname, o.stype, o.domain, o.host, o.port, txt, o.id)
 	}
 	if err != nil {
 		ref = 0
@@ -274,8 +275,12 @@ func (o *RegisterOp) handleError(e error) {
 	queueCallback(func() { o.callback(o, e, false, "", "", "") })
 }
 
-func dnssdRegisterCallback(sdRef unsafe.Pointer, flags uint32, err int32, name, regtype, domain, ctx unsafe.Pointer) {
-	o := (*RegisterOp)(ctx)
+func dnssdRegisterCallback(sdRef unsafe.Pointer, flags uint32, err int32, name, regtype, domain unsafe.Pointer, ctx uintptr) {
+	o, _ := getOpByID(ctx).(*RegisterOp)
+	if o == nil {
+		log.Printf("[ERR] missing *RegisterOp for %v", ctx)
+		return
+	}
 	if e := getError(err); e != nil {
 		o.handleError(e)
 	} else {

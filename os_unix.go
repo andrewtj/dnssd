@@ -23,15 +23,15 @@ extern void browseCallbackWrapper(
 );
 
 static int32_t dnssdBrowse(
-	void                  *sdRef,
+	DNSServiceRef         *sdRef,
 	DNSServiceFlags       flags,
 	uint32_t              ifIndex,
 	const char            *regtype,
 	const char            *domain,
-	void                  *context
+	uintptr_t             context
 	) {
 	DNSServiceBrowseReply callback = (DNSServiceBrowseReply) browseCallbackWrapper;
-	return DNSServiceBrowse(sdRef, flags, ifIndex, regtype, domain, callback, context);
+	return DNSServiceBrowse(sdRef, flags, ifIndex, regtype, domain, callback, (void *)context);
 }
 
 extern void registerCallbackWrapper(
@@ -45,7 +45,7 @@ extern void registerCallbackWrapper(
 );
 
 static int32_t dnssdRegister(
-	void                  *sdRef,
+	DNSServiceRef         *sdRef,
 	DNSServiceFlags       flags,
 	uint32_t              ifIndex,
 	const char            *name,
@@ -55,11 +55,11 @@ static int32_t dnssdRegister(
 	uint16_t              port,
 	uint16_t              txtLen,
 	const void            *txtRecord,
-	void                  *context
+	uintptr_t             context
 	) {
 	port = htons(port);
 	DNSServiceRegisterReply callback = (DNSServiceRegisterReply) registerCallbackWrapper;
-	return DNSServiceRegister(sdRef, flags, ifIndex, name, regtype, domain, host, port, txtLen, txtRecord, callback, context);
+	return DNSServiceRegister(sdRef, flags, ifIndex, name, regtype, domain, host, port, txtLen, txtRecord, callback, (void *)context);
 }
 
 extern void resolveCallbackWrapper(
@@ -76,16 +76,16 @@ extern void resolveCallbackWrapper(
 	);
 
 static int32_t dnssdResolve(
-	void                  *sdRef,
+	DNSServiceRef         *sdRef,
 	DNSServiceFlags       flags,
 	uint32_t              ifIndex,
 	const char            *name,
 	const char            *regtype,
 	const char            *domain,
-	void                  *context
+	uintptr_t             context
 	) {
 	DNSServiceResolveReply callback = (DNSServiceResolveReply) resolveCallbackWrapper;
-	return DNSServiceResolve(sdRef, flags, ifIndex, name, regtype, domain, callback, context);
+	return DNSServiceResolve(sdRef, flags, ifIndex, name, regtype, domain, callback, (void *)context);
 }
 
 extern void queryCallbackWrapper(
@@ -103,16 +103,16 @@ extern void queryCallbackWrapper(
     );
 
 static int32_t dnssdQuery(
-    void                  *sdRef,
+    DNSServiceRef         *sdRef,
     DNSServiceFlags       flags,
     uint32_t              ifIndex,
     const char            *name,
     uint16_t              rrtype,
     uint16_t              rrclass,
-    void                  *context
+    uintptr_t             context
     ) {
     DNSServiceQueryRecordReply callback = (DNSServiceQueryRecordReply) queryCallbackWrapper;
-    return DNSServiceQueryRecord(sdRef, flags, ifIndex, name, rrtype, rrclass, callback, context);
+    return DNSServiceQueryRecord(sdRef, flags, ifIndex, name, rrtype, rrclass, callback, (void *)context);
 }
 
 static uint16_t dnssdNtohs(uint16_t n) {
@@ -145,24 +145,28 @@ import (
 	"unsafe"
 )
 
-func browseStart(ref *uintptr, flags, ifIndex uint32, typ, domain string, ctx unsafe.Pointer) error {
-	cref := unsafe.Pointer(ref)
+func browseStart(ref *uintptr, flags, ifIndex uint32, typ, domain string, ctx uintptr) error {
+	var svc C.DNSServiceRef
 	cflags := C.DNSServiceFlags(flags)
 	cifIndex := C.uint32_t(ifIndex)
 	ctype := C.CString(typ)
 	defer C.free(unsafe.Pointer(ctype))
 	cdomain := C.CString(domain)
 	defer C.free(unsafe.Pointer(cdomain))
-	return getError(int32(C.dnssdBrowse(cref, cflags, cifIndex, ctype, cdomain, ctx)))
+	err := getError(int32(C.dnssdBrowse(&svc, cflags, cifIndex, ctype, cdomain, C.uintptr_t(ctx))))
+	if err == nil {
+		*ref = uintptr(unsafe.Pointer(svc))
+	}
+	return err
 }
 
 //export browseCallbackWrapper
 func browseCallbackWrapper(sdRef unsafe.Pointer, flags, ifIndex uint32, err int32, name, stype, domain unsafe.Pointer, ctx unsafe.Pointer) {
-	dnssdBrowseCallback(sdRef, flags, ifIndex, err, name, stype, domain, ctx)
+	dnssdBrowseCallback(sdRef, flags, ifIndex, err, name, stype, domain, uintptr(ctx))
 }
 
-func resolveStart(ref *uintptr, flags, ifIndex uint32, name, typ, domain string, ctx unsafe.Pointer) error {
-	cref := unsafe.Pointer(ref)
+func resolveStart(ref *uintptr, flags, ifIndex uint32, name, typ, domain string, ctx uintptr) error {
+	var svc C.DNSServiceRef
 	cflags := C.DNSServiceFlags(flags)
 	cifIndex := C.uint32_t(ifIndex)
 	cname := C.CString(name)
@@ -171,17 +175,21 @@ func resolveStart(ref *uintptr, flags, ifIndex uint32, name, typ, domain string,
 	defer C.free(unsafe.Pointer(ctype))
 	cdomain := C.CString(domain)
 	defer C.free(unsafe.Pointer(cdomain))
-	return getError(int32(C.dnssdResolve(cref, cflags, cifIndex, cname, ctype, cdomain, ctx)))
+	err := getError(int32(C.dnssdResolve(&svc, cflags, cifIndex, cname, ctype, cdomain, C.uintptr_t(ctx))))
+	if err == nil {
+		*ref = uintptr(unsafe.Pointer(svc))
+	}
+	return err
 }
 
 //export resolveCallbackWrapper
 func resolveCallbackWrapper(sdRef unsafe.Pointer, flags, ifIndex uint32, err int32, fullname, hosttarget unsafe.Pointer, port, txtLen uint16, txtRecord, ctx unsafe.Pointer) {
 	port = uint16(C.dnssdNtohs(C.uint16_t(port)))
-	dnssdResolveCallback(sdRef, flags, ifIndex, err, fullname, hosttarget, port, txtLen, txtRecord, ctx)
+	dnssdResolveCallback(sdRef, flags, ifIndex, err, fullname, hosttarget, port, txtLen, txtRecord, uintptr(ctx))
 }
 
-func registerStart(ref *uintptr, flags, ifIndex uint32, name, typ, domain, host string, port int, txt []byte, ctx unsafe.Pointer) error {
-	cref := unsafe.Pointer(ref)
+func registerStart(ref *uintptr, flags, ifIndex uint32, name, typ, domain, host string, port int, txt []byte, ctx uintptr) error {
+	var svc C.DNSServiceRef
 	cflags := C.DNSServiceFlags(flags)
 	cifIndex := C.uint32_t(ifIndex)
 	cname := C.CString(name)
@@ -198,29 +206,35 @@ func registerStart(ref *uintptr, flags, ifIndex uint32, name, typ, domain, host 
 	if txtLen > 0 {
 		txtPtr = unsafe.Pointer(&txt[0])
 	}
-	e := C.dnssdRegister(cref, cflags, cifIndex, cname, ctyp, cdomain, chost, cport, txtLen, txtPtr, ctx)
-	return getError(int32(e))
+	err := getError(int32(C.dnssdRegister(&svc, cflags, cifIndex, cname, ctyp, cdomain, chost, cport, txtLen, txtPtr, C.uintptr_t(ctx))))
+	if err == nil {
+		*ref = uintptr(unsafe.Pointer(svc))
+	}
+	return err
 }
 
 //export registerCallbackWrapper
 func registerCallbackWrapper(sdRef unsafe.Pointer, flags uint32, err int32, name, regtype, domain, ctx unsafe.Pointer) {
-	dnssdRegisterCallback(sdRef, flags, err, name, regtype, domain, ctx)
+	dnssdRegisterCallback(sdRef, flags, err, name, regtype, domain, uintptr(ctx))
 }
 
-func queryStart(ref *uintptr, flags, ifIndex uint32, name string, rrtype, rrclass uint16, ctx unsafe.Pointer) error {
-	cref := unsafe.Pointer(ref)
+func queryStart(ref *uintptr, flags, ifIndex uint32, name string, rrtype, rrclass uint16, ctx uintptr) error {
+	var svc C.DNSServiceRef
 	cflags := C.DNSServiceFlags(flags)
 	cifIndex := C.uint32_t(ifIndex)
 	cname := C.CString(name)
 	defer C.free(unsafe.Pointer(cname))
 	crrtype, crrclass := C.uint16_t(rrtype), C.uint16_t(rrclass)
-	e := C.dnssdQuery(cref, cflags, cifIndex, cname, crrtype, crrclass, ctx)
-	return getError(int32(e))
+	err := getError(int32(C.dnssdQuery(&svc, cflags, cifIndex, cname, crrtype, crrclass, C.uintptr_t(ctx))))
+	if err == nil {
+		*ref = uintptr(unsafe.Pointer(svc))
+	}
+	return err
 }
 
 //export queryCallbackWrapper
 func queryCallbackWrapper(sdRef unsafe.Pointer, flags, ifIndex uint32, err int32, f unsafe.Pointer, rrtype, rrclass, rdlen uint16, rdata unsafe.Pointer, ttl uint32, ctx unsafe.Pointer) {
-	dnssdQueryCallback(sdRef, flags, ifIndex, err, f, rrtype, rrclass, rdlen, rdata, ttl, ctx)
+	dnssdQueryCallback(sdRef, flags, ifIndex, err, f, rrtype, rrclass, rdlen, rdata, ttl, uintptr(ctx))
 }
 
 func refSockFd(ref *uintptr) int {
@@ -232,7 +246,12 @@ func platformDeallocateRef(ref *uintptr) {
 }
 
 func createConnection(ref *uintptr) error {
-	return getError(int32(C.DNSServiceCreateConnection((*C.DNSServiceRef)(unsafe.Pointer(ref)))))
+	var svc *C.DNSServiceRef
+	err := getError(int32(C.DNSServiceCreateConnection(svc)))
+	if err == nil {
+		*ref = uintptr(unsafe.Pointer(*svc))
+	}
+	return err
 }
 
 func processResult(ref uintptr) error {

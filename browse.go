@@ -1,6 +1,9 @@
 package dnssd
 
-import "unsafe"
+import (
+	"log"
+	"unsafe"
+)
 
 // BrowseCallbackFunc is called when an error occurs or a service is lost or found.
 type BrowseCallbackFunc func(op *BrowseOp, err error, add bool, interfaceIndex int, name string, serviceType string, domain string)
@@ -92,7 +95,7 @@ func (o *BrowseOp) Start() error {
 func (o *BrowseOp) init(sharedref uintptr) (ref uintptr, err error) {
 	ref = sharedref
 	o.setFlag(_FlagsShareConnection, ref != 0)
-	if err = browseStart(&ref, o.flags, o.interfaceIndexC(), o.stype, o.domain, unsafe.Pointer(o)); err != nil {
+	if err = browseStart(&ref, o.flags, o.interfaceIndexC(), o.stype, o.domain, o.id); err != nil {
 		ref = 0
 	}
 	return
@@ -118,8 +121,12 @@ func (o *BrowseOp) handleError(e error) {
 	queueCallback(func() { o.callback(o, e, false, 0, "", "", "") })
 }
 
-func dnssdBrowseCallback(sdRef unsafe.Pointer, flags, interfaceIndex uint32, err int32, name, stype, domain unsafe.Pointer, ctx unsafe.Pointer) {
-	o := (*BrowseOp)(ctx)
+func dnssdBrowseCallback(sdRef unsafe.Pointer, flags, interfaceIndex uint32, err int32, name, stype, domain unsafe.Pointer, ctx uintptr) {
+	o, _ := getOpByID(ctx).(*BrowseOp)
+	if o == nil {
+		log.Printf("[ERR] missing *BrowseOp for %v", ctx)
+		return
+	}
 	if e := getError(err); e != nil {
 		o.handleError(e)
 	} else {
